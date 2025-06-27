@@ -1,3 +1,8 @@
+fn exit_program() {
+    eprintln!("Exiting program due to an error.");
+    std::process::exit(1);
+}
+
 fn rot_parser(line: &str) -> [u8; 2] {
     let binding: String = line
         .trim()
@@ -109,15 +114,15 @@ fn jmp_parser_choice(line: &str) -> [u8; 2] {
     if line.starts_with("JMPEQ") {
         return jmpeq_filter(&line[5..]);
     } else if line.starts_with("JMPNE") {
-        return jmp_conditional(0x01 << 4, &line[5..]);
+        return jmp_conditional(0x01, &line[5..]);
     } else if line.starts_with("JMPGE") {
-        return jmp_conditional(0x02 << 4, &line[5..]);
+        return jmp_conditional(0x02, &line[5..]);
     } else if line.starts_with("JMPLE") {
-        return jmp_conditional(0x03 << 4, &line[5..]);
+        return jmp_conditional(0x03, &line[5..]);
     } else if line.starts_with("JMPGT") {
-        return jmp_conditional(0x04 << 4, &line[5..]);
+        return jmp_conditional(0x04, &line[5..]);
     } else if line.starts_with("JMPLT") {
-        return jmp_conditional(0x05 << 4, &line[5..]);
+        return jmp_conditional(0x05, &line[5..]);
     } else if line.starts_with("JMP") {
         return jmp_unconditional(&line[3..]);
     } else {
@@ -149,79 +154,69 @@ fn jmp_unconditional(line: &str) -> [u8; 2] {
     }
 }
 
-fn jmp_conditional(opcode: u8, line: &str) -> [u8; 2] {
-    let binding: String = line.replace("R", "");
-    let jmpne_parts: Vec<&str> = binding.split(',').collect();
-
-    if jmpne_parts.len() != 2 {
-        eprintln!("Error: Conditional jump instruction must have exactly two parts.");
-        std::process::exit(1);
-    }
-
-    let reg_n: u8 = jmpne_parts[0].parse().unwrap_or_else(|_| {
-        eprintln!("Error: Invalid register number '{}'", jmpne_parts[0]);
-        std::process::exit(1);
-    });
-    let reg_m: u8 = jmpne_parts[1].parse().unwrap_or_else(|_| {
-        eprintln!("Error: Invalid register number '{}'", jmpne_parts[1]);
-        std::process::exit(1);
-    });
-
-    let opcode: u8 = 0xF << 4 | (opcode & 0x0F);
-    let operand: u8 = (reg_n & 0x0F) << 4 | (reg_m & 0x0F);
-    return [opcode, operand];
-}
-
 fn jmpeq_filter(line: &str) -> [u8; 2] {
-    let jmpeq_parts: Vec<&str> = line.split(',').collect();
+    let jmpeq_parts: Vec<&str> = line.split(',').map(str::trim).collect();
 
-    if jmpeq_parts[0].contains("R") {
-        return jmp_conditional(0x00 << 4, &line);
-    }
+    println!("Processing JMPEQ line: {}", line);
+    println!("JMPEQ parts: {:?}", jmpeq_parts);
 
     if jmpeq_parts.len() != 2 {
         eprintln!("Error: JMPEQ instruction must have exactly two parts.");
         std::process::exit(1);
     }
 
-    let reg_n: u8 = jmpeq_parts[0].parse().unwrap_or_else(|_| {
-        eprintln!("Error: Invalid register number '{}'", jmpeq_parts[0]);
-        std::process::exit(1);
-    });
-    let reg_m: u8 = jmpeq_parts[1].parse().unwrap_or_else(|_| {
-        eprintln!("Error: Invalid register number '{}'", jmpeq_parts[1]);
+    if jmpeq_parts[0].starts_with("R") {
+        return jmp_conditional(0x00, &line);
+    }
+
+    println!("JMPEQ parts: {:?}", jmpeq_parts);
+
+    let jmp_value: u8 = u8::from_str_radix(&jmpeq_parts[0].trim(), 16).unwrap_or_else(|_| {
+        eprintln!("Error: Invalid jump address '{}'", jmpeq_parts[0]);
         std::process::exit(1);
     });
 
-    let opcode: u8 = 0xB << 4 | (0x00 & 0x0F);
-    let operand: u8 = (reg_n & 0x0F) << 4 | (reg_m & 0x0F);
+    let register: u8 = u8::from_str_radix(&jmpeq_parts[1].trim().replace("R", ""), 16)
+        .unwrap_or_else(|_| {
+            eprintln!("Error: Invalid register number '{}'", jmpeq_parts[1]);
+            std::process::exit(1);
+        });
 
-    return [opcode, operand];
+    println!("Jump value: {}, Register: {}", jmp_value, register);
+
+    return [0xB << 4 | register & 0x0F, jmp_value];
 }
 
-// fn data_parser(line: &str) -> i32 {
-//     let opcode: i32 = 0x00;
-//     let cleaned_line: String = line.trim().to_string();
-//     let byte_line: i32 = match cleaned_line.parse::<i32>() {
-//         Ok(value) => value,
-//         Err(_) => {
-//             eprintln!("Error: Invalid data format in line '{}'", line);
-//             return 33; // Error code
-//         }
-//     };
+fn jmp_conditional(instruction: u8, line: &str) -> [u8; 2] {
+    let binding: String = line.replace("R", "");
+    let jmpne_parts: Vec<&str> = binding.split(',').map(str::trim).collect();
 
-//     if byte_line < 0 || byte_line > 255 {
-//         eprintln!(
-//             "Error: Value out of range for 16-bit signed integer: {}",
-//             byte_line
-//         );
-//         return 33; // Error code
-//     }
+    println!("Processing conditional jump line: {}", binding);
+    println!("Conditional jump parts: {:?}", jmpne_parts);
+    println!("Instruction: {:02X}", instruction);
 
-//     let assembled_line: i32 = (opcode << 12) | (byte_line & 0x0FFF);
-//     println!("Assembled data line: {:#X}", assembled_line);
-//     return assembled_line;
-// }
+    if jmpne_parts.len() != 2 {
+        eprintln!("Error: Conditional jump instruction must have exactly two parts.");
+        std::process::exit(1);
+    }
+
+    let reg_n: u8 = u8::from_str_radix(&jmpne_parts[0], 16).unwrap_or_else(|_| {
+        eprintln!("Error: Invalid register number '{}'", jmpne_parts[0]);
+        std::process::exit(1);
+    });
+    let reg_m: u8 = u8::from_str_radix(&jmpne_parts[1], 16).unwrap_or_else(|_| {
+        eprintln!("Error: Invalid register number '{}'", jmpne_parts[1]);
+        std::process::exit(1);
+    });
+
+    println!("Register N: {}, Register M: {}", reg_n, reg_m);
+    println!("Register N: {:02X}, Register M: {:02X}", reg_n, reg_m);
+    println!("Instruction: {:02X}", instruction);
+
+    let opcode: u8 = 0xF << 4 | (reg_m & 0x0F);
+    let operand: u8 = instruction << 4 | (reg_n & 0x0F);
+    return [opcode, operand];
+}
 
 fn mov_grab_register(register: &str) -> u8 {
     let register_address: u8 = u8::from_str_radix(&register.trim().replace("R", ""), 16)
@@ -307,6 +302,7 @@ fn mov_parser_choice(line: &str) -> [u8; 2] {
 
 fn parse_instructions(lines: Vec<String>) -> Vec<String> {
     let assembly_instructions: Vec<String> = Vec::new();
+    // let mut assembly_instructions_code: Vec<Vec<u8>> = Vec::new();
 
     for line in lines {
         println!("Processing line: {}", line);
@@ -342,6 +338,8 @@ fn parse_instructions(lines: Vec<String>) -> Vec<String> {
             let hex_byte: String = format!("{:02X}", byte);
             println!("Hex byte: {}", hex_byte);
         }
+
+        // assembly_instructions_code.extend(code);
     }
 
     return assembly_instructions;
