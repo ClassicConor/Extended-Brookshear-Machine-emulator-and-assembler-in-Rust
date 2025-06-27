@@ -1,1 +1,9 @@
-JMPNE R3, R4
+MOV peter -> R2
+oddrow: JMP 4A
+MOV steve -> R2
+JMPEQ oddrow, R0
+
+peter: DATA 7F
+verd: DATA A9
+steve: DATA 00001111
+asdf: DATA 11011001
