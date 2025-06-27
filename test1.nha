@@ -1,1 +1,1 @@
-OR R5, R6 -> RA
+JMP 0F

@@ -74,13 +74,5 @@ pub fn assember_cleaning() -> Vec<String> {
 
     (label_address, final_lines) = fill_label_address(trimmed_lines.clone());
 
-    // for line in final_lines.clone() {
-    //     println!("{}", line);
-    // }
-
-    // for (key, value) in label_address.iter() {
-    //     println!("Key: {}, Value: {}", key, value);
-    // }
-
     final_lines
 }
