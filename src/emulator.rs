@@ -54,8 +54,8 @@ impl Emulator {
         }
 
         println!("Emulator has halted.");
-        println!("Final register values: {:?}", self.register_values);
-        println!("Final memory state: {:?}", self.memory);
+        println!("Final register values: {:02X?}", self.register_values);
+        println!("Final memory state: {:02X?}", self.memory);
     }
 
     fn fetch(&mut self) {
@@ -144,6 +144,12 @@ impl Emulator {
         let int_a: u8 = self.ef.get_nibble(self.cir, 2);
         let int_b: u8 = self.ef.get_nibble(self.cir, 3);
         let storage_register: u8 = self.ef.get_nibble(self.cir, 1);
+        println!(
+            "Result of addition: {} + {} = {}",
+            int_a,
+            int_b,
+            int_a + int_b
+        );
         self.memory[storage_register as usize] = int_a + int_b;
     }
 
