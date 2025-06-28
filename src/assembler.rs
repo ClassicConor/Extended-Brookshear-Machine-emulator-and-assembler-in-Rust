@@ -250,27 +250,8 @@ fn mov_parser_choice(line: &str) -> [u8; 2] {
     }
 }
 
-fn data_parser(line: &str) -> [u8; 2] {
-    let trimmed: String = line.trim().to_string();
-
-    if trimmed.chars().all(|c| c == '0' || c == '1') && trimmed.len() == 8 {
-        // Binary data (e.g. "DATA 11111111")
-        let binding: u8 = u8::from_str_radix(&trimmed, 2).unwrap_or_else(|_| {
-            panic!("Error: Invalid binary data value '{}'", trimmed);
-        });
-        //println!("Processing DATA line (binary): {}", binding);
-        return [binding, 0x00];
-    } else {
-        // Hexadecimal data (e.g. "DATA FF")
-        let binding: u8 = u8::from_str_radix(line.trim(), 16).unwrap_or_else(|_| {
-            panic!("Error: Invalid hexadecimal data value '{}'", line);
-        });
-        return [binding, 0x00];
-    }
-}
-
-fn parse_instructions(lines: Vec<String>) -> Vec<String> {
-    let assembly_instructions: Vec<String> = Vec::new();
+fn parse_instructions(lines: Vec<String>) -> Vec<u8> {
+    let mut bytes: Vec<u8> = Vec::new();
 
     for line in lines {
         //println!("Processing line: {}", line);
@@ -294,38 +275,31 @@ fn parse_instructions(lines: Vec<String>) -> Vec<String> {
             code.extend_from_slice(&xor_parser(&line[3..]));
         } else if line.starts_with("JMP") {
             code.extend_from_slice(&jmp_parser_choice(&line));
-        } else if line.starts_with("DATA") {
-            code.extend_from_slice(&data_parser(&line[4..]));
         } else {
             panic!("Error: Invalid instruction '{}'", line);
         }
 
-        for byte in code {
-            let hex_byte: String = format!("{:02X}", byte);
-            println!("Hex byte: {}", hex_byte);
-        }
+        bytes.extend(code);
     }
-    println!("Label addresses: {:?}", *LABEL_ADDRESSES.read().unwrap());
-    // Convert the label addrress values to hex format
-    let label_addresses: Vec<String> = LABEL_ADDRESSES
-        .read()
-        .unwrap()
-        .iter()
-        .map(|(label, &address)| format!("{}: {:02X}", label, address))
-        .collect();
 
-    println!("Label addresses in hex: {:?}", label_addresses.join(", "));
-
-    return assembly_instructions;
+    return bytes;
 }
 
-pub fn assembler(cleaned_lines: Vec<String>, label_addresses: HashMap<String, u8>) -> Vec<String> {
+pub fn assembler(cleaned_lines: Vec<String>, label_addresses: HashMap<String, u8>) -> Vec<u8> {
     // Store the label addresses in the static variable using write lock
     {
-        let mut map = LABEL_ADDRESSES.write().unwrap();
+        let mut map: std::sync::RwLockWriteGuard<'_, HashMap<String, u8>> =
+            LABEL_ADDRESSES.write().unwrap();
         *map = label_addresses;
     }
 
-    let final_assembler_code: Vec<String> = parse_instructions(cleaned_lines);
-    return final_assembler_code;
+    let bytes: Vec<u8> = parse_instructions(cleaned_lines);
+
+    println!("Final assembled code:");
+
+    for line in &bytes {
+        println!("{:02X}", line);
+    }
+
+    return bytes;
 }

@@ -21,7 +21,6 @@ fn remove_comments(lines: Vec<String>) -> Vec<String> {
             }
         };
     }
-
     new_lines
 }
 
@@ -34,7 +33,6 @@ fn remove_whitespace(lines: Vec<String>) -> Vec<String> {
             new_lines.push(cleaned_lines);
         }
     }
-
     new_lines
 }
 
@@ -46,34 +44,33 @@ fn fill_label_address(
     let mut new_lines: Vec<String> = Vec::new();
 
     for (count, line) in lines.iter().enumerate() {
-        // println!("Processing line {}: {}", count, line);
-        match line.find(":") {
-            Some(index) => {
-                if line[index + 1..].trim().starts_with("DATA")
-                    && line[index + 1..].trim().split_whitespace().count() == 2
-                {
-                    let variable_name = line[0..index].trim().to_string();
-                    let value: u8 = data_entry(&line[index + 6..].trim());
+        if line.contains(':') {
+            let split_line: Vec<&str> = line.split(':').collect();
+            if split_line.len() == 2 {
+                let variable_name: String = split_line[0].trim().to_string();
+                if split_line[1].trim().starts_with("DATA") {
+                    let value: u8 =
+                        data_entry(split_line[1].trim().split_whitespace().nth(1).unwrap());
+
+                    println!(
+                        "Found DATA entry: variable_name = '{}', value = {:02X}",
+                        variable_name, value
+                    );
                     data_hashmap.insert(variable_name, value);
-                    // new_lines.push(line[index + 6..].trim().to_string());
                 } else {
-                    label_hashmap.insert(line[0..index].trim().to_string(), (count * 2) as u8);
-                    new_lines.push(line[index + 1..].trim().to_string());
+                    let address: u8 = (count * 2) as u8;
+                    label_hashmap.insert(variable_name, address);
+                    new_lines.push(split_line[1].trim().to_string());
                 }
+            } else {
+                panic!("Error: Invalid label format in line '{}'", line);
             }
-            None => {
-                new_lines.push(line.to_string());
-            }
+        } else {
+            new_lines.push(line.trim().to_string());
         }
     }
 
-    // for (label, address) in label_hashmap.iter() {
-    //     println!(
-    //         "Label: {}, Address: {}",
-    //         label_hashmap.get(label).unwrap(),
-    //         address
-    //     );
-    // }
+    println!("Size of new lines: {}", new_lines.len());
 
     return (label_hashmap, new_lines, data_hashmap);
 }
@@ -84,6 +81,8 @@ fn data_entry(line: &str) -> u8 {
     println!("Data entry found: {}", line);
 
     let trimmed: String = line.trim().to_string();
+
+    println!("Trimmed data entry: '{}'", trimmed);
 
     if trimmed
         .chars()
@@ -118,12 +117,12 @@ fn insert_data_labels(
     let mut new_lines: Vec<String> = Vec::new();
 
     for line in lines.iter() {
-        let mut new_line = line.clone();
+        let mut new_line: String = line.clone();
 
         for variable_name in &variable_names_list {
             if new_line.contains(variable_name) {
                 let value: u8 = *data_hashmap.get(variable_name).unwrap();
-                let value_str = format!("{:02X}", value);
+                let value_str: String = format!("{:02X}", value);
                 new_line = new_line.replace(variable_name, &value_str);
             }
         }
@@ -131,37 +130,22 @@ fn insert_data_labels(
         new_lines.push(new_line);
     }
 
-    println!("Lines after inserting DATA labels:");
-    for line in new_lines.iter() {
-        println!("{}", line);
-    }
-
     let label_names_list: Vec<String> = label_addresses.keys().cloned().collect();
 
     let mut new_lines_with_labels: Vec<String> = Vec::new();
 
     for line in new_lines.iter() {
-        let mut new_line = line.clone();
+        let mut new_line: String = line.clone();
 
         for label_name in &label_names_list {
             if new_line.contains(label_name) {
                 let address: u8 = *label_addresses.get(label_name).unwrap();
                 let address_str = format!("{:02X}", address);
-                println!(
-                    "Replacing label '{}' with address '{}'",
-                    label_name, address_str
-                );
+
                 new_line = new_line.replace(label_name, &address_str);
             }
         }
-
         new_lines_with_labels.push(new_line);
-    }
-
-    println!("Final lines after inserting data labels:");
-
-    for line in new_lines_with_labels.iter() {
-        println!("{}", line);
     }
 
     return new_lines_with_labels;
