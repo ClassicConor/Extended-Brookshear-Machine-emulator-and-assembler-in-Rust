@@ -159,6 +159,8 @@ pub fn assember_cleaning() -> (Vec<String>, HashMap<String, u8>) {
         }
     };
 
+    println!("Initial lines: {:?}", lines);
+
     let removed_comments: Vec<String> = remove_comments(lines.clone());
     let trimmed_lines: Vec<String> = remove_whitespace(removed_comments.clone());
 
