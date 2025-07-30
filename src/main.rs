@@ -16,7 +16,4 @@ fn main() {
     }
 
     let assembled_code: Vec<u8> = assembler2::assembler(cleaned_lines, label_addresses).unwrap();
-
-    // emulator::Emulator::new(assembled_code).run();
-    // println!("Emulator finished running.");
 }

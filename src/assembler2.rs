@@ -2,11 +2,8 @@ use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::str::FromStr;
 
-
 pub static LABEL_ADDRESSES: Lazy<std::sync::RwLock<HashMap<String, u8>>> =
     Lazy::new(|| std::sync::RwLock::new(HashMap::new()));
-
-
 
 /// Enum for register operation instructions
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,9 +20,9 @@ impl RegisterOp {
         match self {
             RegisterOp::ADDI => 0x50,
             RegisterOp::ADDF => 0x60,
-            RegisterOp::OR   => 0x07,
-            RegisterOp::AND  => 0x80,
-            RegisterOp::XOR  => 0x90,
+            RegisterOp::OR => 0x70,
+            RegisterOp::AND => 0x80,
+            RegisterOp::XOR => 0x90,
         }
     }
 }
@@ -36,15 +33,13 @@ impl FromStr for RegisterOp {
         match s {
             "ADDI" => Ok(RegisterOp::ADDI),
             "ADDF" => Ok(RegisterOp::ADDF),
-            "OR"   => Ok(RegisterOp::OR),
-            "AND"  => Ok(RegisterOp::AND),
-            "XOR"  => Ok(RegisterOp::XOR),
+            "OR" => Ok(RegisterOp::OR),
+            "AND" => Ok(RegisterOp::AND),
+            "XOR" => Ok(RegisterOp::XOR),
             _ => Err(()),
         }
     }
 }
-
-
 
 /// Enum for conditional jump instructions
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -133,11 +128,17 @@ fn parse_register(instruction_string: &str) -> Result<u8, String> {
         let reg_str = &instruction_string[1..];
         match u8::from_str_radix(reg_str, 16) {
             Ok(num) if num <= 15 => Ok(num),
-            Ok(_) => Err(format!("Register number must be between 0 and 15: {}", instruction_string)),
+            Ok(_) => Err(format!(
+                "Register number must be between 0 and 15: {}",
+                instruction_string
+            )),
             Err(_) => Err(format!("Invalid register number: {}", instruction_string)),
         }
     } else {
-        Err(format!("Register must start with 'R': {}", instruction_string))
+        Err(format!(
+            "Register must start with 'R': {}",
+            instruction_string
+        ))
     }
 }
 
@@ -150,7 +151,10 @@ fn remove_r_from_register_string(instruction_string: &str) -> u8 {
 fn parse_hex_value(value: &str) -> Result<u8, String> {
     match u8::from_str_radix(value, 16) {
         Ok(v) => Ok(v),
-        Err(_) => Err(format!("Invalid value '{}'. Value must be a hexadecimal number.", value)),
+        Err(_) => Err(format!(
+            "Invalid value '{}'. Value must be a hexadecimal number.",
+            value
+        )),
     }
 }
 
@@ -203,7 +207,10 @@ fn process_rot_instruction(rest: &[String]) -> [u8; 2] {
     [opcode, operand]
 }
 
-fn process_register_operation_instructions(instruction_string: &str, rest: &[String]) -> Result<[u8; 2], String> {
+fn process_register_operation_instructions(
+    instruction_string: &str,
+    rest: &[String],
+) -> Result<[u8; 2], String> {
     let op = RegisterOp::from_str(instruction_string)
         .map_err(|_| format!("Error: Invalid instruction '{}'.", instruction_string))?;
 
@@ -275,7 +282,7 @@ fn mov_one_to_three_parts(part_1: &str, part_2: &[String]) -> [u8; 2] {
         if parse_register(part_2[1].as_str()).is_ok() {
             let reg_m: u8 = parse_register(part_2[1].as_str()).unwrap();
             let reg_n: u8 = parse_register(part_1).unwrap();
-            [0xE0, (reg_m << 4) | reg_n]
+            [0xE0, (reg_n << 4) | reg_m]
         } else if parse_hex_value(part_2[1].as_str()).is_ok() {
             let value: u8 = parse_hex_value(part_2[1].as_str()).unwrap();
             let reg_n: u8 = parse_register(part_1).unwrap();
@@ -299,7 +306,7 @@ fn mov_three_to_one_parts(part_1: &[String], part_2: &str) -> [u8; 2] {
         if parse_register(part_1[1].as_str()).is_ok() {
             let reg_n: u8 = parse_register(part_1[1].as_str()).unwrap();
             let memory_address: u8 = parse_register(part_2).unwrap();
-            [0xD0, (reg_n << 4) | memory_address]
+            [0xD0, (memory_address << 4) | reg_n]
         } else if parse_hex_value(part_1[1].as_str()).is_ok() {
             let value: u8 = parse_hex_value(part_1[1].as_str()).unwrap();
             let memory_address: u8 = parse_register(part_2).unwrap();
@@ -335,7 +342,10 @@ fn process_jmp_instruction(rest: &[String]) -> [u8; 2] {
     }
 }
 
-fn process_conditional_jump_instruction(instruction_string: &str, rest: &[String]) -> Result<[u8; 2], String> {
+fn process_conditional_jump_instruction(
+    instruction_string: &str,
+    rest: &[String],
+) -> Result<[u8; 2], String> {
     compare_length(rest.len(), 3);
     confirm_equal_strings(rest[1].as_str(), ",");
 
@@ -347,15 +357,16 @@ fn process_conditional_jump_instruction(instruction_string: &str, rest: &[String
         }
     }
 
-    let jump = ConditionalJump::from_str(instruction_string)
-        .map_err(|_| format!("Error: Invalid conditional jump instruction '{}'.", instruction_string))?;
+    let jump = ConditionalJump::from_str(instruction_string).map_err(|_| {
+        format!(
+            "Error: Invalid conditional jump instruction '{}'.",
+            instruction_string
+        )
+    })?;
 
     let reg_n = parse_register(&rest[0])?;
     let reg_m = parse_register(&rest[2])?;
-    Ok([
-        0xF << 4 | (reg_m & 0x0F),
-        jump.code() << 4 | (reg_n & 0x0F),
-    ])
+    Ok([0xF << 4 | (reg_m & 0x0F), jump.code() << 4 | (reg_n & 0x0F)])
 }
 
 fn parse_instructions(lines: Vec<String>) -> Result<Vec<u8>, String> {
@@ -377,13 +388,15 @@ fn parse_instructions(lines: Vec<String>) -> Result<Vec<u8>, String> {
             Some("ROT") => code.extend_from_slice(&process_rot_instruction(&split_line[1..])),
             Some("MOV") => code.extend_from_slice(&process_mov_instruction(&split_line[1..])),
             Some("ADDI") | Some("ADDF") | Some("OR") | Some("AND") | Some("XOR") => {
-                let returned_code = process_register_operation_instructions(&split_line[0], &split_line[1..])?;
+                let returned_code =
+                    process_register_operation_instructions(&split_line[0], &split_line[1..])?;
                 code.extend_from_slice(&returned_code);
             }
             Some("JMP") => code.extend_from_slice(&process_jmp_instruction(&split_line[1..])),
             Some("JMPEQ") | Some("JMPNE") | Some("JMPGE") | Some("JMPLE") | Some("JMPGT")
             | Some("JMPLT") => {
-                let returned_code = process_conditional_jump_instruction(&split_line[0], &split_line[1..])?;
+                let returned_code =
+                    process_conditional_jump_instruction(&split_line[0], &split_line[1..])?;
                 code.extend_from_slice(&returned_code);
             }
             _ => return Err(format!("Error: Invalid instruction '{}'.", line)),
@@ -395,7 +408,10 @@ fn parse_instructions(lines: Vec<String>) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
-pub fn assembler(cleaned_lines: Vec<String>, label_addresses: HashMap<String, u8>) -> Result<Vec<u8>, String> {
+pub fn assembler(
+    cleaned_lines: Vec<String>,
+    label_addresses: HashMap<String, u8>,
+) -> Result<Vec<u8>, String> {
     // Store the label addresses in the static variable using write lock
     {
         let mut map: std::sync::RwLockWriteGuard<'_, HashMap<String, u8>> =
@@ -413,8 +429,8 @@ pub fn assembler(cleaned_lines: Vec<String>, label_addresses: HashMap<String, u8
     Ok(bytes)
 }
 
-
-#[cfg(test)]mod tests {
+#[cfg(test)]
+mod tests {
     use super::*;
 
     #[test]
@@ -542,7 +558,7 @@ pub fn assembler(cleaned_lines: Vec<String>, label_addresses: HashMap<String, u8
     fn test_jmpge() {
         let cleaned_lines = vec!["JMPGE R1, R2".to_string()];
         let result = assembler(cleaned_lines, HashMap::new()).unwrap();
-        assert_eq!(result, vec![0xF2, 0x01]);
+        assert_eq!(result, vec![0xF2, 0x21]);
     }
 
     #[test]
