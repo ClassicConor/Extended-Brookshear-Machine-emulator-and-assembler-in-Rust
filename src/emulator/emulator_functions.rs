@@ -25,20 +25,6 @@ impl EmulatorFunctions {
         }
     }
 
-    pub fn jump_equal_logic(&self, register_address_at_r: u8, register_values: [u8; 16]) -> bool {
-        if register_address_at_r == 0 {
-            return true;
-        } else if register_address_at_r == 1 {
-            let register_value_at_0: u8 = register_values[0];
-            let register_value_at_r: u8 = register_values[register_address_at_r as usize];
-
-            if register_value_at_0 == register_value_at_r {
-                return true;
-            }
-        }
-        false
-    }
-
     pub fn jump_with_test(
         &self,
         jump_command: u8,

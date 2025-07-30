@@ -1,1 +1,10 @@
-OR R1, R2 -> R3
+        MOV 01 -> R1         // Counter starts at 0
+        MOV 05 -> R2         // Limit = 5
+        MOV 01 -> R3         // Increment value
+
+ loop:   ADDI R1, R3 -> R1    // R1 += 1
+         MOV R2 -> R0         // Move limit to R0
+         JMPEQ done, R1       // If R1 == R2, jump to done
+         JMP loop
+ done:   HALT
+// 

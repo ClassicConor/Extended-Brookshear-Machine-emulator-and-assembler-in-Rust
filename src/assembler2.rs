@@ -80,39 +80,6 @@ impl FromStr for ConditionalJump {
     }
 }
 
-// fn rot_parser(line: &str) -> [u8; 2] {
-//     let binding: String = line
-//         .trim()
-//         .split_whitespace()
-//         .collect::<Vec<&str>>()
-//         .join(" ");
-
-//     let rot_parts: Vec<&str> = binding.split(',').collect();
-
-//     if rot_parts.len() != 2 {
-//         panic!("Error: ROT instruction must have exactly two parts.");
-//     }
-
-//     if rot_parts[0].starts_with("R") && !rot_parts[1].starts_with("R") {
-//         let n_reg: u8 = u8::from_str_radix(&rot_parts[0].trim().replace("R", ""), 16)
-//             .unwrap_or_else(|_| panic!("Error: Invalid register number '{}'", rot_parts[0]));
-
-//         let rot_amount: u8 = u8::from_str_radix(&rot_parts[1].trim(), 16)
-//             .unwrap_or_else(|_| panic!("Error: Invalid rotation amount '{}'", rot_parts[1]));
-
-//         if rot_amount > 15 {
-//             panic!("Error: Rotation amount must be between 0 and 15.");
-//         }
-
-//         let opcode: u8 = 0xA << 4 | (n_reg & 0x0F);
-//         let operand: u8 = rot_amount & 0x0F;
-
-//         return [opcode, operand];
-//     }
-
-//     std::process::exit(1); // Exit if the format is incorrect
-// }
-
 fn compare_length(rest_length: usize, expected_length: usize) {
     if rest_length != expected_length {
         panic!(
@@ -156,11 +123,6 @@ fn parse_hex_value(value: &str) -> Result<u8, String> {
             value
         )),
     }
-}
-
-/// Deprecated: Use parse_hex_value instead.
-fn grab_valid_value(value: &str) -> u8 {
-    parse_hex_value(value).unwrap()
 }
 
 /// Checks if a slice represents a valid memory reference: [ "[", <value>, "]" ]

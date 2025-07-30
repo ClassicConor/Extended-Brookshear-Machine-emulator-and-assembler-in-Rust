@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 mod assembler2;
 mod assembler_cleaner;
-// mod emulator;
+mod emulator;
 
 fn main() {
     let (cleaned_lines, label_addresses): (Vec<String>, HashMap<String, u8>) =
@@ -16,4 +16,7 @@ fn main() {
     }
 
     let assembled_code: Vec<u8> = assembler2::assembler(cleaned_lines, label_addresses).unwrap();
+
+    emulator::Emulator::new(assembled_code).run();
+    println!("Emulator finished running.");
 }

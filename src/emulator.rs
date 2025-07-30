@@ -1,4 +1,6 @@
 mod emulator_functions;
+use std::{process, thread};
+
 use emulator_functions::EmulatorFunctions;
 
 pub struct Emulator {
@@ -19,11 +21,6 @@ impl Emulator {
             memory[i] = *byte; // Load assembled code into memory
         }
 
-        println!("Assembled code loaded into memory:");
-        for (i, byte) in memory.iter().enumerate() {
-            println!("Memory[{}]: {:02X}", i, byte);
-        }
-
         Emulator {
             assembled_code,
             register_values: [0; 16], // Initialize all registers to 0
@@ -41,6 +38,8 @@ impl Emulator {
             // Add your execution logic here
         }
 
+        println!("List of register values: {:02X?}", self.register_values);
+
         while !self.halted && self.program_counter < self.assembled_code.len() {
             println!(
                 "Program Counter: {}, Assembled Code Length: {}",
@@ -51,6 +50,7 @@ impl Emulator {
             self.fetch();
             self.decode();
             self.program_counter += 2; // Move to the next instruction
+            thread::sleep(std::time::Duration::from_millis(1000)); // Simulate a delay for each instruction
         }
 
         println!("Emulator has halted.");
@@ -63,33 +63,29 @@ impl Emulator {
         let high: u16 = self.assembled_code[self.program_counter] as u16;
         let low: u16 = self.assembled_code[self.program_counter + 1] as u16;
         self.cir = (high << 8) | low;
-        println!("Fetched instruction: {:04X}", self.cir);
     }
     fn decode(&mut self) {
         // let ef: ef = emulator_functions::EmulatorFunctions {};
-        let nibble: u8 = self.ef.get_nibble(self.cir, 1); // Get the first 4 bits
+        let nibble: u8 = self.ef.get_nibble(self.cir, 0); // Get the first 4 bits
         println!(
-            "Decoded instruction: {:04X}, Nibble: {:01X}",
+            "Decoded instruction: {:04X}, Nibble: {:02X}",
             self.cir, nibble
         );
 
+        println!("Executing instruction with nibble: {:04X}", nibble);
+
         match nibble {
-            0x00 => self.nop(),                             // Completed
-            0x01 => self.load_from_memory_direct(),         // Completed
-            0x02 => self.load_value_into_register(),        // Completed
-            0x03 => self.store_to_memory(),                 // Completed
-            0x04 => self.move_register_value(),             // Completed
-            0x05 => self.add_integer(),                     // Completed
-            0x06 => self.add_floating_point(),              // Completed
-            0x07 => self.or(),                              // Completed
-            0x08 => self.and(),                             // Completed
-            0x09 => self.xor(),                             // Completed
-            0x0A => self.rotate(),                          // Completed
-            0x0B => self.jump_equal(),                      // Completed
-            0x0C => self.halt(),                            // Completed
-            0x0D => self.load_from_memory(),                // Completed
-            0x0E => self.store_in_memory(),                 // Completed
-            0x0F => self.jump_unconditional_or_with_test(), // Completed
+            0x00 => self.nop(),                      // Working
+            0x01 => self.load_from_memory_direct(),  // Working
+            0x02 => self.load_value_into_register(), // Working
+            0x03 => self.store_to_memory(),          // Working
+            0x04 => self.move_register_value(),      // To work on
+            0x05 | 0x06 | 0x07 | 0x08 | 0x09 | 0x0A => self.register_instruction(nibble), // Working (I believe except for Rot)
+            0x0B => self.jump_equal(),                                                    // Working
+            0x0C => self.halt(),                                                          // Working
+            0x0D => self.load_from_memory(), // To work on
+            0x0E => self.store_in_memory(),  // To work on
+            0x0F => self.jump_unconditional_or_with_test(), // To work on
             _ => panic!(
                 "Error: Invalid instruction nibble '{:01X}' in instruction {:04X}",
                 nibble, self.cir
@@ -102,17 +98,16 @@ impl Emulator {
     }
 
     fn load_from_memory_direct(&mut self) {
+        println!("Loading from memory directly");
         let register_address: u8 = self.ef.get_nibble(self.cir, 1);
         let memory_address: u8 = self.ef.get_byte(self.cir, 1);
+        let memory_address_value: u8 = self.memory[memory_address as usize];
 
-        self.register_values[register_address as usize] = memory_address;
-        println!(
-            "Loaded value {:02X} into register {}",
-            memory_address, register_address
-        );
+        self.register_values[register_address as usize] = memory_address_value;
     }
 
     fn load_value_into_register(&mut self) {
+        println!("Loading value into register");
         let register_address: u8 = self.ef.get_nibble(self.cir, 1);
         let value: u8 = self.ef.get_byte(self.cir, 1); // Get the first byte (high nibble)
 
@@ -124,14 +119,15 @@ impl Emulator {
     }
 
     fn store_to_memory(&mut self) {
+        println!("Storing value to memory - Getting");
         let register_address: u8 = self.ef.get_nibble(self.cir, 1);
         let memory_address: u8 = self.ef.get_byte(self.cir, 1);
-
         let register_value: u8 = self.register_values[register_address as usize];
         self.memory[memory_address as usize] = register_value;
     }
 
     fn move_register_value(&mut self) {
+        println!("Moving register value");
         let register_r: u8 = self.ef.get_nibble(self.cir, 2);
         let register_s: u8 = self.ef.get_nibble(self.cir, 3);
         let register_r_value: u8 = self.register_values[register_r as usize];
@@ -139,65 +135,88 @@ impl Emulator {
         self.register_values[register_s as usize] = register_r_value;
     }
 
-    fn add_integer(&mut self) {
-        println!("Adding integer values");
-        let int_a: u8 = self.ef.get_nibble(self.cir, 2);
-        let int_b: u8 = self.ef.get_nibble(self.cir, 3);
+    fn register_instruction(&mut self, nibble: u8) {
+        println!("Register operation with nibble: {:02X}", nibble);
+        let reg_a: u8 = self.ef.get_nibble(self.cir, 2);
+        let reg_b: u8 = self.ef.get_nibble(self.cir, 3);
+        let reg_a_value: u8 = self.register_values[reg_a as usize];
+        let reg_b_value: u8 = self.register_values[reg_b as usize];
         let storage_register: u8 = self.ef.get_nibble(self.cir, 1);
-        println!(
-            "Result of addition: {} + {} = {}",
-            int_a,
-            int_b,
-            int_a + int_b
-        );
-        self.memory[storage_register as usize] = int_a + int_b;
-    }
 
-    fn add_floating_point(&self) {
-        println!("Adding floating point values");
-    }
-
-    fn or(&mut self) {
-        let var_a: u8 = self.ef.get_nibble(self.cir, 2);
-        let var_b: u8 = self.ef.get_nibble(self.cir, 3);
-        let storage_register: u8 = self.ef.get_nibble(self.cir, 1);
-        self.memory[storage_register as usize] = var_a | var_b;
-    }
-
-    fn and(&mut self) {
-        let var_a: u8 = self.ef.get_nibble(self.cir, 2);
-        let var_b: u8 = self.ef.get_nibble(self.cir, 3);
-        let storage_register: u8 = self.ef.get_nibble(self.cir, 1);
-        self.memory[storage_register as usize] = var_a & var_b;
-    }
-
-    fn xor(&mut self) {
-        let var_a: u8 = self.ef.get_nibble(self.cir, 2);
-        let var_b: u8 = self.ef.get_nibble(self.cir, 3);
-        let storage_register: u8 = self.ef.get_nibble(self.cir, 1);
-        self.memory[storage_register as usize] = var_a ^ var_b;
-    }
-
-    fn rotate(&mut self) {
-        let target_reg: u8 = self.ef.get_nibble(self.cir, 1);
-        let rot_amount: u8 = self.ef.get_nibble(self.cir, 3); // ensures 0–7
-
-        let data: u8 = self.register_values[target_reg as usize];
-        let rotated: u8 = data.rotate_right(rot_amount.into());
-        self.register_values[target_reg as usize] = rotated;
+        match nibble {
+            0x05 => {
+                println!("Adding integer values: {} + {}", reg_a_value, reg_b_value);
+                self.register_values[storage_register as usize] =
+                    reg_a_value.wrapping_add(reg_b_value);
+            }
+            0x06 => {
+                println!(
+                    "Adding floating point values: {} + {}",
+                    reg_a_value, reg_b_value
+                );
+            }
+            0x07 => {
+                println!("OR operation: {} | {}", reg_a_value, reg_b_value);
+                self.register_values[storage_register as usize] = reg_a_value | reg_b_value;
+            }
+            0x08 => {
+                println!("AND operation: {} & {}", reg_a_value, reg_b_value);
+                self.register_values[storage_register as usize] = reg_a_value & reg_b_value;
+            }
+            0x09 => {
+                println!("XOR operation: {} ^ {}", reg_a_value, reg_b_value);
+                self.register_values[storage_register as usize] = reg_a_value ^ reg_b_value;
+            }
+            0x0A => {
+                let target_reg: u8 = storage_register;
+                let rot_amount: u8 = self.ef.get_nibble(self.cir, 3); // ensures 0–7
+                let data: u8 = self.register_values[target_reg as usize];
+                let rotated: u8 = data.rotate_right(rot_amount.into());
+                self.register_values[target_reg as usize] = rotated;
+                println!(
+                    "Rotating register {} by {} bits: {:02X} -> {:02X}",
+                    target_reg, rot_amount, data, rotated
+                );
+            }
+            _ => panic!(
+                "Error: Invalid register operation nibble '{:01X}' in instruction {:04X}",
+                nibble, self.cir
+            ),
+        }
     }
 
     fn jump_equal(&mut self) {
-        let register_address_at_r: u8 = self.ef.get_nibble(self.cir, 1);
-        let memory_location: u8 = self.ef.get_nibble(self.cir, 1);
+        println!("Jump if equal operation");
+        let register_r_address: u8 = self.ef.get_nibble(self.cir, 1);
+        let memory_location: u8 = self.ef.get_byte(self.cir, 1);
+        // let : u8 = self.memory[memory_location as usize];
 
-        if self
-            .ef
-            .jump_equal_logic(register_address_at_r, self.register_values.clone())
-            == true
-        {
-            self.program_counter = memory_location as usize;
+        println!(
+            "Jumping to memory address: {:02X} if register {} is equal to 0",
+            memory_location, register_r_address
+        );
+
+        if register_r_address == 0 {
+            println!(
+                "{:05}    Jumping to memory address: {:02X}",
+                1, memory_location
+            );
+            self.program_counter = (memory_location - 2) as usize;
+        } else if register_r_address > 0 && register_r_address < 16 {
+            println!(
+                "{:05}     Jumping to memory address: {:04X} if register {} is equal to 0",
+                1, memory_location, register_r_address
+            );
+            let register_0_value: u8 = self.register_values[0];
+            let register_r_value: u8 = self.register_values[register_r_address as usize];
+            if register_r_value == register_0_value {
+                self.program_counter = memory_location as usize;
+            }
+        } else {
+            panic!("Error: Invalid register address for jump operation");
         }
+
+        return;
     }
 
     fn halt(&mut self) {
@@ -206,6 +225,7 @@ impl Emulator {
     }
 
     fn load_from_memory(&mut self) {
+        println!("Loading from memory");
         let register_r_address: u8 = self.ef.get_nibble(self.cir, 2);
         let register_s_address_for_memory: u8 = self.ef.get_nibble(self.cir, 3);
         let memory_value: u8 = self.memory[register_s_address_for_memory as usize];
@@ -213,6 +233,7 @@ impl Emulator {
     }
 
     fn store_in_memory(&mut self) {
+        println!("Storing in memory");
         let register_r_address: u8 = self.ef.get_nibble(self.cir, 2);
         let register_s_address: u8 = self.ef.get_nibble(self.cir, 3);
 
@@ -222,6 +243,7 @@ impl Emulator {
 
     // Final method to do
     fn jump_unconditional_or_with_test(&mut self) {
+        println!("Jump unconditional or with test operation");
         let register_address_at_r: u8 = self.ef.get_nibble(self.cir, 1);
         let which_test: u8 = self.ef.get_nibble(self.cir, 2);
         let memory_address_stored_in_register: u8 = self.ef.get_nibble(self.cir, 3);
