@@ -170,7 +170,15 @@ pub fn assember_cleaning() -> (Vec<String>, HashMap<String, u8>) {
 
     (label_address, cleaned_lines, data_lines) = fill_label_address(trimmed_lines.clone());
 
+    println!("Label addresses: {:?}", label_address);
+    println!("Cleaned lines: {:?}", cleaned_lines);
+    println!("Data lines: \n{:?}", data_lines);
+
     let final_lines: Vec<String> = insert_data_labels(&cleaned_lines, &data_lines, &label_address);
+
+    println!("Final lines after inserting data labels: {:?}", final_lines);
+
+    // std::process::exit(0);
 
     (final_lines, label_address)
 }

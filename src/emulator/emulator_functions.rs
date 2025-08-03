@@ -32,12 +32,12 @@ impl EmulatorFunctions {
         register_value_at_r: u8,
     ) -> bool {
         match jump_command {
-            0 => register_value_at_0 == register_value_at_r, // EQ
-            1 => register_value_at_0 != register_value_at_r, // NE
-            2 => register_value_at_0 <= register_value_at_r, // LT
-            3 => register_value_at_0 >= register_value_at_r, // GT
-            4 => register_value_at_0 < register_value_at_r,  // LE
-            5 => register_value_at_0 > register_value_at_r,  // GE
+            0 => register_value_at_r == register_value_at_0, // EQ
+            1 => register_value_at_r != register_value_at_0, // NE
+            2 => register_value_at_r >= register_value_at_0, // LT
+            3 => register_value_at_r <= register_value_at_0, // GT
+            4 => register_value_at_r > register_value_at_0,  // LE
+            5 => register_value_at_r < register_value_at_0,  // GE
             _ => {
                 panic!("Error: Invalid jump command");
             }

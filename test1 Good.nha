@@ -1,0 +1,8 @@
+// Test MOV register to memory (direct addressing)
+        MOV 88 -> R0           // Load value into R0
+        MOV 99 -> R1           // Load value into R1
+        MOV R0 -> [20]         // Store R0 to memory location 20
+        MOV R1 -> [21]         // Store R1 to memory location 21
+        HALT
+20:     DATA 00                // Memory location 20
+21:     DATA 00                // Memory location 21

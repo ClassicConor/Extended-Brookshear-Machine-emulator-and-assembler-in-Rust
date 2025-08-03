@@ -1,5 +1,5 @@
 mod emulator_functions;
-use std::{process, thread};
+use std::thread;
 
 use emulator_functions::EmulatorFunctions;
 
@@ -50,12 +50,13 @@ impl Emulator {
             self.fetch();
             self.decode();
             self.program_counter += 2; // Move to the next instruction
-            thread::sleep(std::time::Duration::from_millis(1000)); // Simulate a delay for each instruction
+            println!("Current Register Values: {:02X?}", self.register_values);
+            // thread::sleep(std::time::Duration::from_millis(1000)); // Simulate a delay for each instruction
         }
 
         println!("Emulator has halted.");
         println!("Final register values: {:02X?}", self.register_values);
-        println!("Final memory state: {:02X?}", self.memory);
+        println!("Final memory state: \n{:02X?}", self.memory);
     }
 
     fn fetch(&mut self) {
@@ -79,13 +80,13 @@ impl Emulator {
             0x01 => self.load_from_memory_direct(),  // Working
             0x02 => self.load_value_into_register(), // Working
             0x03 => self.store_to_memory(),          // Working
-            0x04 => self.move_register_value(),      // To work on
-            0x05 | 0x06 | 0x07 | 0x08 | 0x09 | 0x0A => self.register_instruction(nibble), // Working (I believe except for Rot)
-            0x0B => self.jump_equal(),                                                    // Working
-            0x0C => self.halt(),                                                          // Working
-            0x0D => self.load_from_memory(), // To work on
-            0x0E => self.store_in_memory(),  // To work on
-            0x0F => self.jump_unconditional_or_with_test(), // To work on
+            0x04 => self.move_register_value(),      // Working
+            0x05 | 0x06 | 0x07 | 0x08 | 0x09 | 0x0A => self.register_instruction(nibble), // Working
+            0x0B => self.jump_equal(),               // Working
+            0x0C => self.halt(),                     // Working
+            0x0D => self.load_from_memory(),         // Working
+            0x0E => self.store_in_memory(),          // Working
+            0x0F => self.jump_unconditional_or_with_test(), // Working
             _ => panic!(
                 "Error: Invalid instruction nibble '{:01X}' in instruction {:04X}",
                 nibble, self.cir
@@ -210,7 +211,7 @@ impl Emulator {
             let register_0_value: u8 = self.register_values[0];
             let register_r_value: u8 = self.register_values[register_r_address as usize];
             if register_r_value == register_0_value {
-                self.program_counter = memory_location as usize;
+                self.program_counter = (memory_location - 2) as usize;
             }
         } else {
             panic!("Error: Invalid register address for jump operation");
@@ -226,41 +227,55 @@ impl Emulator {
 
     fn load_from_memory(&mut self) {
         println!("Loading from memory");
-        let register_r_address: u8 = self.ef.get_nibble(self.cir, 2);
-        let register_s_address_for_memory: u8 = self.ef.get_nibble(self.cir, 3);
-        let memory_value: u8 = self.memory[register_s_address_for_memory as usize];
-        self.register_values[register_r_address as usize] = memory_value;
+        let register_saving_address: u8 = self.ef.get_nibble(self.cir, 2);
+        let memory_address_in_register: u8 = self.ef.get_nibble(self.cir, 3);
+        let memory_address: u8 = self.register_values[memory_address_in_register as usize];
+
+        let memory_value: u8 = self.memory[memory_address as usize];
+        self.register_values[register_saving_address as usize] = memory_value;
     }
 
     fn store_in_memory(&mut self) {
         println!("Storing in memory");
-        let register_r_address: u8 = self.ef.get_nibble(self.cir, 2);
-        let register_s_address: u8 = self.ef.get_nibble(self.cir, 3);
-
-        let register_r_value: u8 = self.register_values[register_r_address as usize];
-        self.register_values[register_s_address as usize] = register_r_value;
+        let register_address: u8 = self.ef.get_nibble(self.cir, 2);
+        let register_value: u8 = self.register_values[register_address as usize];
+        let memory_address_in_registry: u8 = self.ef.get_nibble(self.cir, 3);
+        let memory_address: u8 = self.register_values[memory_address_in_registry as usize];
+        self.memory[memory_address as usize] = register_value;
     }
 
-    // Final method to do
     fn jump_unconditional_or_with_test(&mut self) {
+        // JMPEQ - Working
+        // JMPNE - Working
+        // JMPGE - Working
+        // JMPGT - Working
+        // JMPLE - Working
+        // JMPLT - Working
         println!("Jump unconditional or with test operation");
-        let register_address_at_r: u8 = self.ef.get_nibble(self.cir, 1);
+        let register_address: u8 = self.ef.get_nibble(self.cir, 1);
+        let register_value: u8 = self.register_values[register_address as usize];
         let which_test: u8 = self.ef.get_nibble(self.cir, 2);
         let memory_address_stored_in_register: u8 = self.ef.get_nibble(self.cir, 3);
+        let memory_address: u8 = self.register_values[memory_address_stored_in_register as usize];
+        let register_value_at_0: u8 = self.register_values[0];
 
-        if register_address_at_r == 0 {
-            self.program_counter = self.memory[memory_address_stored_in_register as usize] as usize;
+        println!("Register value at 0: {:02X}", register_value_at_0);
+        println!(
+            "Register value at {}: {:02X}",
+            register_address, register_value
+        );
+
+        let do_the_jump: bool =
+            self.ef
+                .jump_with_test(which_test, register_value_at_0, register_value);
+
+        if do_the_jump {
+            self.program_counter = (memory_address - 2) as usize;
         } else {
-            let register_value_at_0: u8 = self.register_values[0];
-            let register_value_at_r: u8 = self.register_values[register_address_at_r as usize];
-            let do_the_jump: bool =
-                self.ef
-                    .jump_with_test(which_test, register_value_at_0, register_value_at_r);
-
-            if do_the_jump {
-                self.program_counter =
-                    self.memory[memory_address_stored_in_register as usize] as usize;
-            }
+            println!(
+                "Jump condition not met, not jumping to memory address: {:02X}",
+                memory_address
+            );
         }
     }
 }

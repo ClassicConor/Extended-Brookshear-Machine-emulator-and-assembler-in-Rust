@@ -1,10 +1,8 @@
-        MOV 01 -> R1         // Counter starts at 0
-        MOV 05 -> R2         // Limit = 5
-        MOV 01 -> R3         // Increment value
+        MOV [value1] -> R0    // Load value1 into R0
+        MOV [value2] -> R1    // Load value2 into R1
+        ADDI R0, R1 -> R2     // Add R0 + R1, store in R2
+        HALT                  // Stop execution
 
- loop:   ADDI R1, R3 -> R1    // R1 += 1
-         MOV R2 -> R0         // Move limit to R0
-         JMPEQ done, R1       // If R1 == R2, jump to done
-         JMP loop
- done:   HALT
-// 
+value1: DATA 0A            // Value 0x0A (decimal 10) placed here
+value2: DATA 14            // Value 0x14 (decimal 20) placed here
+20:     DATA 33            // Explicitly place 0x33 at address 0x20
