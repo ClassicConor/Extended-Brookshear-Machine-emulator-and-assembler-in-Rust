@@ -1,8 +1,19 @@
-        MOV [value1] -> R0    // Load value1 into R0
-        MOV [value2] -> R1    // Load value2 into R1
-        ADDI R0, R1 -> R2     // Add R0 + R1, store in R2
-        HALT                  // Stop execution
+// Bitwise operations test
+// Tests OR, AND, XOR, and rotation
 
-value1: DATA 0A            // Value 0x0A (decimal 10) placed here
-value2: DATA 14            // Value 0x14 (decimal 20) placed here
-20:     DATA 33            // Explicitly place 0x33 at address 0x20
+    MOV 55 -> R5         // 01010101 in binary
+    MOV AA -> R6         // 10101010 in binary
+    
+    OR R5, R6 -> R1      // OR: should give FF (11111111)
+    AND R5, R6 -> R2     // AND: should give 00 (00000000)  
+    XOR R5, R6 -> R3     // XOR: should give FF, but let's use different values
+    
+    MOV 55 -> R7         // 01010101
+    XOR R7, R7 -> R2     // XOR with itself gives 00
+    XOR R5, R2 -> R3     // XOR with 00 gives original: 55
+    
+    MOV 11 -> R8         // 00010001 in binary
+    ROT R8, 1            // Rotate right by 1: becomes 10001000 = 88
+    MOV R8 -> R4         // Copy to R4 for verification
+    
+    HALT

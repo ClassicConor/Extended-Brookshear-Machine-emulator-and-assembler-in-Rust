@@ -4,8 +4,11 @@ mod assembler_cleaner;
 mod emulator;
 
 fn main() {
-    let (cleaned_lines, label_addresses): (Vec<String>, HashMap<String, u8>) =
-        assembler_cleaner::assember_cleaning();
+    let (cleaned_lines, label_addresses, data_entries): (
+        Vec<String>,
+        HashMap<String, u8>,
+        Vec<u8>,
+    ) = assembler_cleaner::assember_cleaning();
 
     for line in &cleaned_lines {
         println!("{}", line);
@@ -15,7 +18,10 @@ fn main() {
         println!("Label: {}, Address: {:02X}", label, address);
     }
 
-    let assembled_code: Vec<u8> = assembler2::assembler(cleaned_lines, label_addresses).unwrap();
+    let mut assembled_code: Vec<u8> =
+        assembler2::assembler(cleaned_lines, label_addresses).unwrap();
+
+    assembled_code.extend(data_entries);
 
     emulator::Emulator::new(assembled_code).run();
     println!("Emulator finished running.");
