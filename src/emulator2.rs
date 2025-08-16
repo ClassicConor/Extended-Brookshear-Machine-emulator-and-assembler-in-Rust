@@ -1,7 +1,7 @@
-mod emulator_functions;
+mod emulator_functions2;
 use std::thread;
 
-use emulator_functions::EmulatorFunctions;
+use emulator_functions2::EmulatorFunctions;
 
 pub struct Emulator {
     assembled_code: Vec<u8>,
@@ -42,6 +42,8 @@ impl Emulator {
 
         println!("List of register values: {:02X?}", self.register_values);
 
+        println!("List of memory values: \n{:02X?}", self.memory);
+
         while !self.halted && self.program_counter < self.assembled_code.len() {
             println!(
                 "Program Counter: {}, Assembled Code Length: {}",
@@ -59,9 +61,11 @@ impl Emulator {
                 self.program_counter += 2; // Move to the next instruction
             }
 
+            println!("");
+
             println!("Current Register Values: {:02X?}", self.register_values);
-            println!("Current Memory State: \n{:02X?}", self.memory);
-            thread::sleep(std::time::Duration::from_millis(1000)); // Simulate a delay for each instruction
+            // println!("Current Memory State: \n{:02X?}", self.memory);
+            // thread::sleep(std::time::Duration::from_millis(1000)); // Simulate a delay for each instruction
         }
 
         println!("Emulator has halted.");
@@ -86,14 +90,14 @@ impl Emulator {
         println!("Executing instruction with nibble: {:04X}", nibble);
 
         match nibble {
-            0x00 => self.nop(),                      // Working
+            0x00 => self.nop(),                      // NOP WORKS
             0x01 => self.load_from_memory_direct(),  // Working
-            0x02 => self.load_value_into_register(), // Working
+            0x02 => self.load_value_into_register(), // LOAD VALUE TO REGISTER WORKS
             0x03 => self.store_to_memory(),          // Working
             0x04 => self.move_register_value(),      // Working
             0x05 | 0x06 | 0x07 | 0x08 | 0x09 | 0x0A => self.register_instruction(nibble), // Working
             0x0B => self.jump_equal(),               // Working
-            0x0C => self.halt(),                     // Working
+            0x0C => self.halt(),                     // HALT WORKS
             0x0D => self.load_from_memory(),         // Working
             0x0E => self.store_in_memory(),          // Working
             0x0F => self.jump_unconditional_or_with_test(), // Working
@@ -198,10 +202,8 @@ impl Emulator {
 
     fn jump_equal(&mut self) {
         println!("Jump if equal operation");
-        self.jump_instruction = true; // Set the jump instruction flag
         let register_r_address: u8 = self.ef.get_nibble(self.cir, 1);
         let memory_location: u8 = self.ef.get_byte(self.cir, 1);
-        // let : u8 = self.memory[memory_location as usize];
 
         println!(
             "Jumping to memory address: {:02X} if register {} is equal to 0",
@@ -213,6 +215,8 @@ impl Emulator {
                 "{:05}    Jumping to memory address: {:02X}",
                 1, memory_location
             );
+            self.jump_instruction = true; // Set the jump instruction flag
+
             self.program_counter = memory_location as usize;
         } else if register_r_address > 0 && register_r_address < 16 {
             println!(
@@ -221,7 +225,17 @@ impl Emulator {
             );
             let register_0_value: u8 = self.register_values[0];
             let register_r_value: u8 = self.register_values[register_r_address as usize];
+            println!(
+                "Register 0 value: {:02X}, Register {} value: {:02X}",
+                register_0_value, register_r_address, register_r_value
+            );
             if register_r_value == register_0_value {
+                println!(
+                    "Jump condition met, jumping to memory address: {:02X}",
+                    memory_location
+                );
+                self.jump_instruction = true; // Set the jump instruction flag
+
                 self.program_counter = memory_location as usize;
             }
         } else {
@@ -262,7 +276,6 @@ impl Emulator {
         // JMPGT - Working
         // JMPLE - Working
         // JMPLT - Working
-        self.jump_instruction = true; // Set the jump instruction flag
         println!("Jump unconditional or with test operation");
         let register_address: u8 = self.ef.get_nibble(self.cir, 1);
         let register_value: u8 = self.register_values[register_address as usize];
@@ -282,7 +295,8 @@ impl Emulator {
                 .jump_with_test(which_test, register_value_at_0, register_value);
 
         if do_the_jump {
-            self.program_counter = (memory_address - 2) as usize;
+            self.jump_instruction = true; // Set the jump instruction flag
+            self.program_counter = memory_address as usize;
         } else {
             println!(
                 "Jump condition not met, not jumping to memory address: {:02X}",

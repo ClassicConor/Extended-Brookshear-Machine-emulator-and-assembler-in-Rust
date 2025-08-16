@@ -557,4 +557,16 @@ mod tests {
         let result = assembler(cleaned_lines, HashMap::new()).unwrap();
         assert_eq!(result, vec![0xC0, 0x00]);
     }
+
+    #[test]
+    fn test_data_input() {
+        let cleaned_lines = vec![
+            "MOV R1 -> R2".to_string(),
+            "ADDI R3, R4 -> R5".to_string(),
+            "JMPEQ R2, R5".to_string(),
+        ];
+        let label_addresses = HashMap::new();
+        let result = assembler(cleaned_lines, label_addresses).unwrap();
+        assert_eq!(result, vec![0x40, 0x12, 0x55, 0x34, 0xF5, 0x02]);
+    }
 }

@@ -50,7 +50,7 @@ fn fill_label_address(
     let mut data_entries: Vec<u8> = Vec::new();
 
     // First pass: count instructions
-    let mut instruction_count = 0;
+    let mut instruction_count: i32 = 0;
     for line in &lines {
         if !line.contains(':') || (!line.trim().ends_with("DATA") && !line.contains("DATA")) {
             instruction_count += 1;
@@ -59,12 +59,12 @@ fn fill_label_address(
 
     let mut data_pc: u8 = (instruction_count * 2) as u8;
 
-    for line in &lines {
+    for (index, line) in lines.iter().enumerate() {
         if line.contains(':') {
             let split_line: Vec<&str> = line.split(':').collect();
             if split_line.len() == 2 {
                 let variable_name: String = split_line[0].trim().to_string();
-                let value_part = split_line[1].trim();
+                let value_part: &str = split_line[1].trim();
 
                 if value_part.to_uppercase().starts_with("DATA") {
                     let data_str = value_part.trim_start_matches("DATA").trim().to_string();
@@ -80,7 +80,12 @@ fn fill_label_address(
                     data_pc += 1; // assuming one byte per data entry; adjust if multi-byte
                 } else {
                     // Register label pointing to the instruction address
-                    label_hashmap.insert(variable_name.clone(), instruction_count as u8);
+                    println!(
+                        "Registering label: {} at instruction count: {}",
+                        variable_name,
+                        index * 2
+                    );
+                    label_hashmap.insert(variable_name.clone(), index as u8 * 2);
                     new_lines.push(value_part.trim().to_string());
                 }
             } else {

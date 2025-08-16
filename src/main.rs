@@ -2,6 +2,7 @@ use std::collections::HashMap;
 mod assembler2;
 mod assembler_cleaner;
 mod emulator;
+mod emulator2;
 
 fn main() {
     let (cleaned_lines, label_addresses, data_entries): (
@@ -18,11 +19,15 @@ fn main() {
         println!("Label: {}, Address: {:02X}", label, address);
     }
 
+    println!("Label addresses: {:?}", label_addresses);
+
     let mut assembled_code: Vec<u8> =
         assembler2::assembler(cleaned_lines, label_addresses).unwrap();
 
     assembled_code.extend(data_entries);
 
-    emulator::Emulator::new(assembled_code).run();
+    println!("Assembled code: {:02X?}", assembled_code);
+
+    emulator2::Emulator::new(assembled_code).run();
     println!("Emulator finished running.");
 }
